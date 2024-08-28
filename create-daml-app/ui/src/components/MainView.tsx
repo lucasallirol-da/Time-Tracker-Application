@@ -8,6 +8,8 @@ import { User } from '@daml.js/create-daml-app';
 import { publicContext, userContext } from './App';
 import UserList from './UserList';
 import PartyListEdit from './PartyListEdit';
+import MessageEdit from './MessageEdit';
+import MessageList from './MessageList';
 
 // USERS_BEGIN
 const MainView: React.FC = () => {
@@ -16,19 +18,19 @@ const MainView: React.FC = () => {
   const aliases = publicContext.useStreamQueries(User.Alias, () => [], []);
   const myUser = myUserResult.contracts[0]?.payload;
   const allUsers = userContext.useStreamQueries(User.User).contracts;
-// USERS_END
+  // USERS_END
 
   // Sorted list of users that are following the current user
   const followers = useMemo(() =>
     allUsers
-    .map(user => user.payload)
-    .filter(user => user.username !== username)
-    .sort((x, y) => x.username.localeCompare(y.username)),
+      .map(user => user.payload)
+      .filter(user => user.username !== username)
+      .sort((x, y) => x.username.localeCompare(y.username)),
     [allUsers, username]);
 
   // Map to translate party identifiers to aliases.
   const partyToAlias = useMemo(() =>
-    new Map<Party, string>(aliases.contracts.map(({payload}) => [payload.username, payload.alias])),
+    new Map<Party, string>(aliases.contracts.map(({ payload }) => [payload.username, payload.alias])),
     [aliases]
   );
   const myUserName = aliases.loading ? 'loading ...' : partyToAlias.get(username) ?? username;
@@ -38,7 +40,7 @@ const MainView: React.FC = () => {
 
   const follow = async (userToFollow: Party): Promise<boolean> => {
     try {
-      await ledger.exerciseByKey(User.User.Follow, username, {userToFollow});
+      await ledger.exerciseByKey(User.User.Follow, username, { userToFollow });
       return true;
     } catch (error) {
       alert(`Unknown error:\n${JSON.stringify(error)}`);
@@ -52,8 +54,8 @@ const MainView: React.FC = () => {
       <Grid centered columns={2}>
         <Grid.Row stretched>
           <Grid.Column>
-            <Header as='h1' size='huge' color='blue' textAlign='center' style={{padding: '1ex 0em 0ex 0em'}}>
-                {myUserName ? `Welcome, ${myUserName}!` : 'Loading...'}
+            <Header as='h1' size='huge' color='blue' textAlign='center' style={{ padding: '1ex 0em 0ex 0em' }}>
+              {myUserName ? `Welcome, ${myUserName}!` : 'Loading...'}
             </Header>
 
             <Segment>
@@ -87,6 +89,21 @@ const MainView: React.FC = () => {
                 onFollow={follow}
               />
               {/* USERLIST_END */}
+            </Segment>
+            <Segment>
+              <Header as='h2'>
+                <Icon name='pencil square' />
+                <Header.Content>
+                  Messages
+                  <Header.Subheader>Send a message to a follower</Header.Subheader>
+                </Header.Content>
+              </Header>
+              <MessageEdit
+                followers={followers.map(follower => follower.username)}
+                partyToAlias={partyToAlias}
+              />
+              <Divider />
+              <MessageList partyToAlias={partyToAlias} />
             </Segment>
           </Grid.Column>
         </Grid.Row>
