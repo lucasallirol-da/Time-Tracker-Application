@@ -1,22 +1,17 @@
 module Setup where
 
-import DA.Optional (fromSomeNote)
-import qualified DA.Text as T
+-- import DA.Optional (fromSomeNote)
+-- import qualified DA.Text as T
 import Daml.Script
+--Need to qualify to avoid confusion with User.User used bellow
+import qualified User as Worker
+import Timetracker
 
--- | A record containing all the parties that we will use in our script
-data Parties = Parties
-  with
-    alice : Party
-    bob : Party
-    charlie: Party
-    public: Party
-
-data Projects = Projects
-  with
-    newApp : Party
-    support : Party
-    cloud: Party
+-- data Projects = Projects
+--   with
+--     newApp : Party
+--     support : Party
+--     cloud: Party
 
 -- | A test user for the create-daml-app network.
 -- When a participantName is provided, the testUser will be created/or fetched
@@ -30,18 +25,57 @@ defaultParticipant : Optional ParticipantName
 defaultParticipant = None
 -- | Create a public party, then create three test users.
 
-setup : Script Projects
+setup : Script ()
 setup = do
-  alice <- allocateParty "Alice"
-  bob <- allocateParty "Bob"
+  alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
+  bob <- allocatePartyWithHint "Bob" (PartyIdHint "Bob")
+  aliceId <- validateUserId "alice"
+  bobId <- validateUserId "bob"
+  createUser (User aliceId (Some alice)) [CanActAs alice]
+  createUser (User bobId (Some bob)) [CanActAs bob]
 
   newApp <- allocateParty "newApp"
   support <- allocateParty "support"
   cloud <- allocateParty "cloud"
-  pure $ Projects with
-    newApp
-    support
-    cloud
+
+  timeTracker1Cid <- createCertificate newApp
+  timeTracker2Cid <- createCertificate support
+  timeTracker3Cid <- createCertificate cloud
+
+  workerCid <- submit alice do
+    createCmd Worker with
+      username = alice
+      timetrackers = [timeTracker1Cid, timeTracker2Cid, timeTracker3Cid]
+
+  
+  
+-- Setup script to create Timetrackers sample certificates
+createCertificate : Script (ContractId Timetracker)
+createCertificate project = do
+    -- Get the current time
+    currentTime <- getTime
+    submit alice do
+      createCmd TimeTracker with
+        description = "working on the new App"
+        startTime = currentTime
+        endTime = None
+        user = alice
+        project
+
+  
+
+
+  
+
+        
+
+  
+  -- pure $ Projects with
+  --   newApp
+  --   support
+  --   cloud
+
+  
     
 
 --   -- | Create a test user.
@@ -51,8 +85,7 @@ setup = do
 --   let p = getPrimaryParty u
 --   pure p
     
--- Get the current time
--- currentTime <- getTime
+
 
 -- -- Generate the contractId using the helper function
 -- let contractId = generateContractId currentTime

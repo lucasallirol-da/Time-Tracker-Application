@@ -12,10 +12,11 @@ template TimeTracker with
     project: Party
   where
     signatory user
+    observer project
 
 
 
-    -- ensure cash.amount > 0.0
+    -- ensure project > 0.0
     --     && T.length cash.currency == 3
     --     && T.isUpper cash.currency
 

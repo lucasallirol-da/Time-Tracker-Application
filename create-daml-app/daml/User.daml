@@ -11,11 +11,9 @@ import TimeTracker
 -- MAIN_TEMPLATE_BEGIN
 template User with
     username: Party
-    -- following: [Party]
     timetrackers: [TimeTracker]
   where
     signatory username
-    -- observer following
 -- MAIN_TEMPLATE_END
 
     key username: Party
@@ -29,54 +27,3 @@ template User with
         archive self
         create this with timetrackers = newTracker :: timetrackers
     -- TRACKTIME_END
-
-    -- -- FOLLOW_BEGIN
-    -- nonconsuming choice Follow: ContractId User with
-    --     userToFollow: Party
-    --   controller username
-    --   do
-    --     assertMsg "You cannot follow yourself" (userToFollow /= username)
-    --     assertMsg "You cannot follow the same user twice" (notElem userToFollow following)
-    --     archive self
-    --     create this with following = userToFollow :: following
-    -- -- FOLLOW_END
-
--- ALIAS_BEGIN
--- template Alias with
---     username: Party
---     alias: Text
---     public: Party
---   where
---     signatory username
---     observer public
-
---     key (username, public) : (Party, Party)
---     maintainer key._1
-
---     nonconsuming choice Change: ContractId Alias with
---         newAlias: Text
---       controller username
---       do
---         archive self
---         create this with alias = newAlias
--- ALIAS_END
-
--- template TimeTracker with
---     description: Text
---     startTime: Time 
---     endTime: Time 
---     user: Party
---     project: Text
---   where
---     signatory user
-    
-
---     choice UpdateEndTime
---       : ContractId TimeTracker
---       with
---         newEndTime : Time
---       controller user
---       do
---         assertMsg "newEndTime has to be later than start time." (startTime < newEndTime)
---         create this with
---           endTime = newEndTime
