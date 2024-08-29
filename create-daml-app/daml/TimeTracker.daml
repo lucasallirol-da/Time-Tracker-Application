@@ -1,0 +1,51 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module TimeTracker where
+
+-- MAIN_TEMPLATE_BEGIN
+template TimeTracker with
+    description: Text
+    startTime: Time 
+    endTime: Time 
+    user: Party
+    project: Party
+  where
+    signatory user
+
+
+
+    -- ensure cash.amount > 0.0
+    --     && T.length cash.currency == 3
+    --     && T.isUpper cash.currency
+
+    choice UpdateEndTime
+      : ContractId TimeTracker
+      with
+        newEndTime : Time
+      controller user
+      do
+        assertMsg "newEndTime has to be later than start time." (startTime < newEndTime)
+        create this with
+          endTime = newEndTime
+
+
+  -- choice_test = do USE A  SCRIPT
+  --   project1 <- allocateParty "newApp"
+  --   project2 <- allocateParty "cloud"
+  --   project3 <- allocateParty "support"
+  --   user <- allocateParty "jose"
+  --   currentTime <- getTime
+
+  --   userCid <- submit user do
+  --     createCmd TimeTracker with
+  --       description = "commit new testcases on UI"
+  --       startTime = currentTime
+  --       endTime = None
+  --       user
+  --       project = project1
+
+  --   submitMustFail party do
+  --     currentTime <- getTime
+  --     exerciseCmd UserCid UpdateEndTime with
+  --       newEndTime = currentTime
