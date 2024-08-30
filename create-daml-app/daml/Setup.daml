@@ -26,7 +26,7 @@ defaultParticipant : Optional ParticipantName
 defaultParticipant = None
 -- | Create a public party, then create three test users.
 
-setup : Script ()
+setup : Script ([ContractId Timetracker])
 setup = do
   alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
   bob <- allocatePartyWithHint "Bob" (PartyIdHint "Bob")
@@ -35,37 +35,54 @@ setup = do
   createUser (User aliceId (Some alice)) [CanActAs alice]
   createUser (User bobId (Some bob)) [CanActAs bob]
 
-  
-  -- let defaultEndTime = time (date 1970 Jan 1) 00 00 00
-  
-  timeTracker1 <- createCertificate alice
-  timeTracker2 <- createCertificate alice
-  timeTracker3 <- createCertificate alice
-
-  return ()
-  
-
-
+  newApp <- allocateParty "New App"
+  support <- allocateParty "Support"
+  cicd <- allocateParty "CI/CD"
 
   
+  --TT=TimeTracker
+  newAppTTCid <- createCertificate alice newApp
+  supportTTCid <- createCertificate alice support
+  cicdTTCid <- createCertificate alice cicd
+
+  -- Stop Tracking new app by submitting contract change
+  newAppTTCid <- submit alice do exerciseCmd newAppTTCid StopTracking
   
--- Setup script to create Timetrackers sample certificates
-createCertificate : Party -> Script (ContractId Timetracker)
-createCertificate user = do
-    let defaultTime= seconds 0
+  -- contracts <- getContractsByProject alice
+
+
+  return ([newAppTTCid,supportTTCid,cicdTTCid])
+  
+
+
+
+  
+  
+-- Setup script to create Timetrackers certificates
+createCertificate : Party -> Party -> Script (ContractId Timetracker)
+createCertificate user project = do
+    -- let defaultTime= seconds 0
     -- Define the Unix epoch time (1970-01-01T00:00:00Z) as default endTimevalue
     let defaultendTime = time (date 1970 Jan 1) 00 00 00
     -- Get the current time
     currentTime <- getTime
     submit user do
       createCmd Timetracker with
-        project = "newApp"
+        project
         description = "working on the new App"
         startTime = currentTime
         endTime =  defaultendTime
         user
-        timeSpent= defaultTime
+        -- timeSpent= defaultTime
         timeIsTracked = False
+
+
+-- Function to query all contracts of ExampleContract
+-- getContractsByProject : Party -> Script [ContractId Timetracker]
+-- getContractsByProject party= do
+--   contracts <- query @Timetracker (signatory party)
+--   return contracts
+
 
   
 
