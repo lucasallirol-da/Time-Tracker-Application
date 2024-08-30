@@ -2,15 +2,21 @@
 -- SPDX-License-Identifier: Apache-2.0
 
 module Timetracker where
-
+import DA.Time
 -- MAIN_TEMPLATE_BEGIN
 template Timetracker with
+    project: Text
     description: Text
     startTime: Time 
     endTime: Time 
     user: Party
+    timeSpent: RelTime 
+    timeIsTracked: Bool
   where
     signatory user
+
+    key (user, project ): (Party, Text)
+    maintainer key._1
 
 
 
@@ -18,8 +24,7 @@ template Timetracker with
     --     && T.length cash.currency == 3
     --     && T.isUpper cash.currency
 
-    choice UpdateEndTime
-      : ContractId Timetracker
+    nonconsuming choice StopTracking: ContractId Timetracker
       with
         newEndTime : Time
       controller user
@@ -27,6 +32,13 @@ template Timetracker with
         assertMsg "newEndTime has to be later than start time." (startTime < newEndTime)
         create this with
           endTime = newEndTime
+
+    nonconsuming choice StartTracking: ContractId Timetracker 
+      controller user
+      do
+        currentTime <- getTime
+        archive self
+        create this with startTime = currentTime
 
 
   -- choice_test = do USE A  SCRIPT

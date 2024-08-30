@@ -3,8 +3,9 @@ module Setup where
 -- import DA.Optional (fromSomeNote)
 -- import qualified DA.Text as T
 import Daml.Script
---Need to qualify to avoid confusion with User.User used bellow
-import Project
+import DA.Time
+import DA.Date
+-- import Project
 import Timetracker
 
 -- data Projects = Projects
@@ -34,35 +35,37 @@ setup = do
   createUser (User aliceId (Some alice)) [CanActAs alice]
   createUser (User bobId (Some bob)) [CanActAs bob]
 
-  newApp <- allocateParty "newApp"
-  support <- allocateParty "support"
-  cloud <- allocateParty "cloud"
+  
+  -- let defaultEndTime = time (date 1970 Jan 1) 00 00 00
+  
+  timeTracker1 <- createCertificate alice
+  timeTracker2 <- createCertificate alice
+  timeTracker3 <- createCertificate alice
 
-  timeTracker1Cid <- createCertificate alice
-  timeTracker2Cid <- createCertificate alice
-  timeTracker3Cid <- createCertificate alice
+  return ()
+  
 
-  projectCid <- submit alice do
-    createCmd Project with
-      projectId = newApp
-      user = alice
-      timetracker = timeTracker1Cid
 
-  return()
 
   
   
 -- Setup script to create Timetrackers sample certificates
-createCertificate : Party -> Timetracker
+createCertificate : Party -> Script (ContractId Timetracker)
 createCertificate user = do
+    let defaultTime= seconds 0
+    -- Define the Unix epoch time (1970-01-01T00:00:00Z) as default endTimevalue
+    let defaultendTime = time (date 1970 Jan 1) 00 00 00
     -- Get the current time
     currentTime <- getTime
     submit user do
       createCmd Timetracker with
+        project = "newApp"
         description = "working on the new App"
         startTime = currentTime
-        endTime = currentTime
+        endTime =  defaultendTime
         user
+        timeSpent= defaultTime
+        timeIsTracked = False
 
   
 
