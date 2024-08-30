@@ -1,18 +1,16 @@
 -- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
-module TimeTracker where
+module Timetracker where
 
 -- MAIN_TEMPLATE_BEGIN
-template TimeTracker with
+template Timetracker with
     description: Text
     startTime: Time 
     endTime: Time 
     user: Party
-    project: Party
   where
     signatory user
-    observer project
 
 
 
@@ -21,7 +19,7 @@ template TimeTracker with
     --     && T.isUpper cash.currency
 
     choice UpdateEndTime
-      : ContractId TimeTracker
+      : ContractId Timetracker
       with
         newEndTime : Time
       controller user

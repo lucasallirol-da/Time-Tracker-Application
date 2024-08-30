@@ -3,27 +3,29 @@
 
 
 
-module User where
+module Project where
 
-import TimeTracker
+import Timetracker
 -- val UserCmd = ledger_api_utils.create(user1.packageId,"User","User",Map("username" -> bob,"following" -> alice,"timetrackers" -> Map("description" -> "first Time Tracker", "startTime" -> 0, "endTime" -> 0, "user" -> bob, "project" -> "support")))
 
 -- MAIN_TEMPLATE_BEGIN
-template User with
-    username: Party
-    timetrackers: [TimeTracker]
+template Project with
+    projectId: Party
+    user: Party
+    timetracker: Timetracker
   where
-    signatory username
+    signatory user
+    observer projectId
 -- MAIN_TEMPLATE_END
 
-    key username: Party
+    key user: Party
     maintainer key
 
     -- TRACKTIME_BEGIN
-    nonconsuming choice TrackTime: ContractId User with
-        newTracker: TimeTracker
-      controller username
+    nonconsuming choice TrackTime: ContractId Project with
+        newTracker: Timetracker
+      controller user
       do
         archive self
-        create this with timetrackers = newTracker :: timetrackers
+        create this with timetracker = newTracker
     -- TRACKTIME_END
