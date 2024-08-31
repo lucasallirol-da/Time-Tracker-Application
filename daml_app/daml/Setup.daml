@@ -74,6 +74,15 @@ createCertificate user project = do
         timeIsTracked = False
 
 
+-- test_setup = script do
+  -- timeTrackersList <- setup
+  -- temp <- fetchActiveContractsByTemplate Timetracker
+  -- Some timeTracker1  <- queryContractId alice timeTrackersList._1
+  -- assert(timeTrackersList._1.description == "working on this project")
+  
+
+
+
 -- Function to query all contracts of ExampleContract
 -- getContractsByProject : Party -> Script [ContractId Timetracker]
 -- getContractsByProject party= do

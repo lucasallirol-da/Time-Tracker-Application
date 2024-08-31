@@ -2,7 +2,9 @@
 -- SPDX-License-Identifier: Apache-2.0
 
 module Timetracker where
--- import DA.Time
+import Daml.Script
+import DA.Time
+import DA.Date
 -- MAIN_TEMPLATE_BEGIN
 template Timetracker with
     project: Party
@@ -35,6 +37,7 @@ template Timetracker with
       do
         assertMsg "The Time is not Tracked, please start tracking time first." (not timeIsTracked)
         currentTime <- getTime
+        archive self
         create this with 
           startTime = currentTime
           timeIsTracked = True
@@ -43,25 +46,42 @@ test_timetracker = script do
   alice <- allocateParty "Alice"
   newApp <- allocateParty "newApp"
 
+  let defaultTime = time (date 1970 Jan 1) 00 00 00 
+  setTime (time (date 2024 Apr 5) 14 30 05)
+
   -- create Timetracker
-  let defaultendTime = time (date 1970 Jan 1) 00 00 00
-    -- Get the current time
-    submit alice do
-      createCmd Timetracker with
-        newApp
-        description = "working on this project"
-        startTime = currentTime
-        endTime =  defaultendTime
-        alice
-        -- timeSpent= defaultTime
-        timeIsTracked = False
+  timetracker <- submit alice do
+    createCmd Timetracker with
+      project = newApp
+      description = "working on this project"
+      startTime = defaultTime
+      endTime =  defaultTime
+      user = alice
+      timeIsTracked = False
 
-  -- Alice transfers it to Bob.
-  iou2 <- submit alice do
-    exerciseCmd iou Transfer with
-      newOwner = bob
 
-  -- Bob transfers it to Charlie.
-  submit bob do
-    exerciseCmd iou2 Transfer with
-      newOwner = charlie
+  timetracker <- submit alice do exerciseCmd timetracker StartTracking
+  timetracker <- submit alice do exerciseCmd timetracker StopTracking
+  timetracker <- submit alice do exerciseCmd timetracker StartTracking
+  --Can't start a timetracker if it's started already
+  submitMustFail alice do exerciseCmd timetracker StartTracking
+  timetracker <- submit alice do exerciseCmd timetracker StopTracking
+  --Can't stop a timetracker if it's not started 
+  submitMustFail alice do exerciseCmd timetracker StopTracking
+
+  -- setting custom time that is later than current one
+  let laterTime = time (date 2029 Jan 1) 00 00 00
+
+  timetracker2 <- submit alice do
+    createCmd Timetracker with
+      project = newApp
+      description = "working on this project"
+      startTime = laterTime
+      endTime =  defaultTime
+      user = alice
+      timeIsTracked = False
+
+  -- Can't have a stopTime later than start time
+  submitMustFail alice do exerciseCmd timetracker2 StopTracking
+
+
