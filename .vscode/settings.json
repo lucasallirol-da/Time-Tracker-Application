@@ -1,5 +1,3 @@
 {
-    "files.readonlyInclude": {
-        "**/.daml/unpacked-dars/**": true
-    }
+"isGitignoreExtActive": true,
 }

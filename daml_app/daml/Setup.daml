@@ -1,0 +1,118 @@
+module Setup where
+
+-- import DA.Optional (fromSomeNote)
+-- import qualified DA.Text as T
+import Daml.Script
+import DA.Time
+import DA.Date
+-- import Project
+import Timetracker
+
+-- data Projects = Projects
+--   with
+--     newApp : Party
+--     support : Party
+--     cloud: Party
+
+-- | A test user for the create-daml-app network.
+-- When a participantName is provided, the testUser will be created/or fetched
+-- on the given participant.
+data TestUser = TestUser with
+  alias : Text
+  public : Party
+  participantName: Optional ParticipantName
+
+defaultParticipant : Optional ParticipantName
+defaultParticipant = None
+-- | Create a public party, then create three test users.
+
+setup : Script ([ContractId Timetracker])
+setup = do
+  alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
+  aliceId <- validateUserId "alice"
+  createUser (User aliceId (Some alice)) [CanActAs alice]
+
+  newApp <- allocateParty "New App"
+  support <- allocateParty "Support"
+  cicd <- allocateParty "CI/CD"
+
+  
+  --TT=TimeTracker
+  newAppTTCid <- createCertificate alice newApp
+  supportTTCid <- createCertificate alice support
+  cicdTTCid <- createCertificate alice cicd
+
+  -- Stop Tracking new app by submitting contract change
+  newAppTTCid <- submit alice do exerciseCmd newAppTTCid StopTracking
+  
+  -- contracts <- getContractsByProject alice
+
+
+  return ([newAppTTCid,supportTTCid,cicdTTCid])
+  
+
+
+
+  
+  
+-- Setup script to create Timetrackers certificates
+createCertificate : Party -> Party -> Script (ContractId Timetracker)
+createCertificate user project = do
+    -- let defaultTime= seconds 0
+    -- Define the Unix epoch time (1970-01-01T00:00:00Z) as default endTimevalue
+    let defaultendTime = time (date 1970 Jan 1) 00 00 00
+    -- Get the current time
+    currentTime <- getTime
+    submit user do
+      createCmd Timetracker with
+        project
+        description = "working on this project"
+        startTime = currentTime
+        endTime =  defaultendTime
+        user
+        -- timeSpent= defaultTime
+        timeIsTracked = False
+
+
+-- Function to query all contracts of ExampleContract
+-- getContractsByProject : Party -> Script [ContractId Timetracker]
+-- getContractsByProject party= do
+--   contracts <- query @Timetracker (signatory party)
+--   return contracts
+
+
+  
+
+
+  
+
+        
+
+  
+  -- pure $ Projects with
+  --   newApp
+  --   support
+  --   cloud
+
+  
+    
+
+--   -- | Create a test user.
+-- createProject : Text -> Script Party
+-- createProject projectName = do
+--   u <- getOrCreateUser alias (Some public) participantName
+--   let p = getPrimaryParty u
+--   pure p
+    
+
+
+-- -- Generate the contractId using the helper function
+-- let contractId = generateContractId currentTime
+
+-- -- Create the contract with the auto-assigned contractId
+-- contractId <- submit alice do
+--   createCmd Contract with
+--     issuer = alice
+--     owner = bob
+--     contractId = contractId
+--     creationTime = currentTime

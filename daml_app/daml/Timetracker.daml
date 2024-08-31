@@ -1,0 +1,67 @@
+-- Copyright (c) 2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module Timetracker where
+-- import DA.Time
+-- MAIN_TEMPLATE_BEGIN
+template Timetracker with
+    project: Party
+    description: Text
+    startTime: Time 
+    endTime: Time 
+    user: Party
+    timeIsTracked: Bool
+  where
+    signatory user
+    observer project
+
+    -- key (user, project ): (Party, Text)
+    -- maintainer key._1
+
+
+    nonconsuming choice StopTracking: ContractId Timetracker
+      controller user
+      do
+        newEndTime <- getTime
+        assertMsg "newEndTime has to be later than start time." (startTime <= newEndTime)
+        assertMsg "The Time is not Tracked, please start tracking time first." (timeIsTracked)
+        archive self
+        create this with
+          endTime = newEndTime
+          timeIsTracked = False
+
+    nonconsuming choice StartTracking: ContractId Timetracker 
+      controller user
+      do
+        assertMsg "The Time is not Tracked, please start tracking time first." (not timeIsTracked)
+        currentTime <- getTime
+        create this with 
+          startTime = currentTime
+          timeIsTracked = True
+
+test_timetracker = script do
+  alice <- allocateParty "Alice"
+  newApp <- allocateParty "newApp"
+
+  -- create Timetracker
+  let defaultendTime = time (date 1970 Jan 1) 00 00 00
+    -- Get the current time
+    submit alice do
+      createCmd Timetracker with
+        newApp
+        description = "working on this project"
+        startTime = currentTime
+        endTime =  defaultendTime
+        alice
+        -- timeSpent= defaultTime
+        timeIsTracked = False
+
+  -- Alice transfers it to Bob.
+  iou2 <- submit alice do
+    exerciseCmd iou Transfer with
+      newOwner = bob
+
+  -- Bob transfers it to Charlie.
+  submit bob do
+    exerciseCmd iou2 Transfer with
+      newOwner = charlie
