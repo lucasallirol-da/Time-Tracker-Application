@@ -30,6 +30,7 @@ template Timetracker with
       do
         newEndTime <- getTime
         assertMsg "newEndTime has to be later than start time." (startTime <= newEndTime)
+        assertMsg "The Time is not Tracked, please start tracking time first." (timeIsTracked)
         archive self
         create this with
           endTime = newEndTime
@@ -38,6 +39,7 @@ template Timetracker with
     nonconsuming choice StartTracking: ContractId Timetracker 
       controller user
       do
+        assertMsg "The Time is not Tracked, please start tracking time first." (not timeIsTracked)
         currentTime <- getTime
         create this with 
           startTime = currentTime
