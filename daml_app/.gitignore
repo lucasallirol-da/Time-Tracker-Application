@@ -3,7 +3,8 @@
 /.daml
 build
 node_modules
-
+../lib
+./lib
 *.log
 
 ui/daml.js
