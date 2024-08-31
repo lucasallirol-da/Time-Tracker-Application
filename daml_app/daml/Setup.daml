@@ -70,7 +70,6 @@ createCertificate user project = do
         startTime = currentTime
         endTime =  defaultendTime
         user
-        -- timeSpent= defaultTime
         timeIsTracked = False
 
 
