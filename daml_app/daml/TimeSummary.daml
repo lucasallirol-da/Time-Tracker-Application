@@ -1,0 +1,15 @@
+module TimeSummary where
+import Timetracker
+import DA.Time
+
+-- MAIN_TEMPLATE_BEGIN
+template TimeSummary with
+    user: Party
+    project: Optional Party
+    timetrackers: [Timetracker]
+    totalTime: RelTime 
+  where
+    signatory user
+    observer project
+
+

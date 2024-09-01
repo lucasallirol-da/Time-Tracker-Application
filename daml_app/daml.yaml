@@ -6,10 +6,6 @@ dependencies:
 - daml-prim
 - daml-stdlib
 - daml-script
+- daml-trigger
 start-navigator: true
-codegen:
-  js:
-    output-directory: ui/daml.js
-    npm-scope: daml.js
-# Remove this line when running against a ledger without user management.
 init-script: Setup:setup
