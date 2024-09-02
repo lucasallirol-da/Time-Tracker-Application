@@ -4,6 +4,9 @@ import DA.Time
 import DA.Date
 import Timetracker
 import TimeSummary
+import DA.Assert ((=/=), (===))
+import DA.List (head)
+
 
 defaultParticipant : Optional ParticipantName
 defaultParticipant = None
@@ -59,17 +62,18 @@ createTTCertificate user project = do
         timeIsTracked = True
 
 -- Setup script to create TimeSummary certificates
-createTSCertificate : Party -> Optional Party -> [Timetracker] -> Script (RelTime)
+createTSCertificate : Party -> Optional Party -> [Timetracker] -> Script (ContractId TimeSummary, RelTime)
 createTSCertificate user project timetrackers = do
   totalTime <- getTotalTime timetrackers
-  submit user do
+  tSCertificateCid <- submit user do
     createCmd TimeSummary with
       user
       project
       timetrackers
       totalTime 
-  --return totalTime for test purpose
-  return totalTime
+      observers = []
+  --return Cid but also totalTime for test purpose
+  return (tSCertificateCid, totalTime)
 
 
 -- test_setup = script do
@@ -99,19 +103,12 @@ calculateDuration tracker = if tracker.timeIsTracked
   then seconds 0
   else subTime tracker.endTime tracker.startTime
 
--- Filter the Timetrackers by period (day,week,year...)
+-- Filter the Timetrackers by selected period (day,week,month,year...)
 filterTimeTrackers : [Timetracker] -> Time -> Time -> Script [Timetracker]
 filterTimeTrackers contracts periodStart periodEnd = script do
   -- remove from the list contracts with end date not included in the period searched
   -- A choice was made to choose only the end date rather than start date or both included in the period
   pure (foldl (\state c -> if c.endTime >= periodStart && c.endTime <= periodEnd then c :: state else state) [] contracts)
-
--- -- Fetch the contract from Id and return the totalTime (for assert test purpose)
--- fetchTotalTime : ContractId TimeSummary -> Script RelTime
--- fetchTotalTime timeSummaryId = do
---   timeSummary <- fetch timeSummaryId
---   return timeSummary.totalTime
-
 
 
 create_summary = script do
@@ -148,23 +145,51 @@ create_summary = script do
   allContractsTime <- getTotalTime allContracts
 
   -- Create TimeSummary for specifics projects
-  newAppTotalTime <- createTSCertificate alice (Some newApp) newAppContracts
-  supportTotalTime <- createTSCertificate alice (Some support) supportContracts
-  uxTotalTime <- createTSCertificate alice (Some ux) uxContracts
+  (newAppCid, newAppTotalTime) <- createTSCertificate alice (Some newApp) newAppContracts
+  (supportCid, supportTotalTime) <- createTSCertificate alice (Some support) supportContracts
+  (uxCid, uxTotalTime) <- createTSCertificate alice (Some ux) uxContracts
 
   assert(newAppTotalTime> seconds 0)
   assert(supportTotalTime> newAppTotalTime)
   assert(uxTotalTime> supportTotalTime)
 
   --Create TimeSummary for all projects (That Alice worked on)
-  toDateTotalTime <- createTSCertificate alice None allContracts
-  assert(toDateTotalTime == newAppTotalTime + supportTotalTime + uxTotalTime)
+  (toDateCid, toDateTotalTime) <- createTSCertificate alice None allContracts
+  -- assert the total time are as expected
+  toDateTotalTime
+    === (newAppTotalTime + supportTotalTime + uxTotalTime)
 
   --Create TimeSummary for every Project during April (Projects that were finsihed in April)
   allAprilContracts <- filterTimeTrackers allContracts (time (date 2024 Apr 1) 00 00 00) (time (date 2024 Apr 30) 00 00 00)
   allAprilContractsTime <- getTotalTime allAprilContracts
-  aprilTotalTime <- createTSCertificate alice None allAprilContracts
-  assert(aprilTotalTime == newAppTotalTime + supportTotalTime)
+  (aprilCid, aprilTotalTime) <- createTSCertificate alice None allAprilContracts
+  -- assert the total time are as expected
+  toDateTotalTime
+    === (newAppTotalTime + supportTotalTime + uxTotalTime)
+
+  --Share the Summary with new parties
+  bob <- allocateParty "Bob"
+  lucas <- allocateParty "Lucas"
+  toDateCid <- submit alice do 
+    exerciseCmd toDateCid ShareTimeSummary
+      with newObervers = [bob]
+  newAppCid <- submit alice do 
+    exerciseCmd newAppCid ShareTimeSummary
+      with newObervers = [lucas]
+
+  --assert Bob and Lucas see the corrects timeSummary
+  bobContracts <- query @TimeSummary bob
+  let bobContract = head bobContracts
+
+  lucasContracts <- query @TimeSummary lucas
+  let lucasContract = head lucasContracts
+
+  bobContract._1 === toDateCid
+  bobContract._1 =/= newAppCid
+
+  lucasContract._1 =/= toDateCid
+  lucasContract._1 === newAppCid
+
 
 
 

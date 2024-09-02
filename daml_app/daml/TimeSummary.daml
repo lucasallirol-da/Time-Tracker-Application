@@ -8,8 +8,17 @@ template TimeSummary with
     project: Optional Party
     timetrackers: [Timetracker]
     totalTime: RelTime 
+    observers : [Party]
   where
     signatory user
-    observer project
+    observer project, observers
+
+    nonconsuming choice ShareTimeSummary: ContractId TimeSummary
+      with newObervers : [Party]
+      controller user
+      do
+        archive self
+        create this with
+          observers =  observers ++ newObervers 
 
 
