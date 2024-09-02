@@ -1,5 +1,5 @@
 sdk-version: 2.9.4
-name: create-daml-app
+name: time-tracker
 version: 0.1.0
 source: daml
 dependencies:
@@ -7,5 +7,5 @@ dependencies:
 - daml-stdlib
 - daml-script
 - daml-trigger
-start-navigator: true
+start-navigator: false
 init-script: Setup:setup

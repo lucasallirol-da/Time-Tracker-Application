@@ -1,6 +1,8 @@
 module TimeSummary where
 import Timetracker
 import DA.Time
+import Daml.Script
+import DA.Date
 
 -- MAIN_TEMPLATE_BEGIN
 template TimeSummary with
@@ -13,6 +15,9 @@ template TimeSummary with
     signatory user
     observer project, observers
 
+    -- key (user, project ): (Party, Optional Party)
+    -- maintainer key._1
+
     nonconsuming choice ShareTimeSummary: ContractId TimeSummary
       with newObervers : [Party]
       controller user
@@ -20,5 +25,59 @@ template TimeSummary with
         archive self
         create this with
           observers =  observers ++ newObervers 
+
+data TimeTracker = TimeTracker with
+  project: Party
+  description: Text
+  startTime: Time 
+  endTime: Time 
+  user: Party
+  timeIsTracked: Bool
+
+
+test_timeSummary = script do
+  alice <- allocateParty "Alice"
+  newApp <- allocateParty "newApp"
+
+  let defaultTime = time (date 1970 Jan 1) 00 00 00 
+  setTime (time (date 2024 Apr 5) 14 30 05)
+  currentTime <- getTime
+
+  let 
+    timetracker = TimeTracker with
+      project = newApp
+      description = "I'm working on a new feature to add trigger to the app"
+      startTime= currentTime
+      endTime= defaultTime
+      user = alice
+      timeIsTracked= True
+
+  -- create Timetracker
+  timetrackerCid <- createTTCertificate timetracker.user timetracker.project timetracker.description
+
+  contracts <- query @Timetracker alice
+  let timetrackers =  map snd contracts
+  -- create TimeSummary
+  createTSCertificate timetracker.user (Some timetracker.project) timetrackers
+  -- simply check in the script results that the certificates azre correctly created. more checks are made on the setup.daml file
+  
+
+
+
+-- Script to create TimeSummary certificates
+createTSCertificate : Party -> Optional Party -> [Timetracker] -> Script (ContractId TimeSummary, RelTime)
+createTSCertificate user project timetrackers = do
+  totalTime <- getTotalTime timetrackers
+  tSCertificateCid <- submit user do
+    createCmd TimeSummary with
+      user
+      project
+      timetrackers
+      totalTime 
+      observers = []
+  --return Cid but also totalTime for test purpose
+  return (tSCertificateCid, totalTime)
+
+
 
 

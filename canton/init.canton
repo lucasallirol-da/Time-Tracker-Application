@@ -1,6 +1,6 @@
 import better.files._
 
-val createDamlAppDar =  "daml_app" / ".daml" / "dist" / "create-daml-app-0.1.0.dar"
+val createDamlAppDar =  "daml_app" / ".daml" / "dist" / "time-tracker-0.1.0.dar"
 
 createDamlAppDar.exists || sys.error(s"please run daml build in the create-daml-app folder to build the dar file ${createDamlAppDar}")
 

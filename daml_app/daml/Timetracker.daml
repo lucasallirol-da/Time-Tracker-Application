@@ -2,7 +2,7 @@ module Timetracker where
 import Daml.Script
 import DA.Time
 import DA.Date
--- MAIN_TEMPLATE_BEGIN
+
 template Timetracker with
     project: Party
     description: Text
@@ -14,17 +14,12 @@ template Timetracker with
     signatory user
     observer project
 
-    -- key (user, project ): (Party, Text)
-    -- maintainer key._1
-
-
-    nonconsuming choice StopTracking: ContractId Timetracker
+    choice StopTracking: ContractId Timetracker
       controller user
       do
         newEndTime <- getTime
         assertMsg "newEndTime has to be later than start time." (startTime <= newEndTime)
         assertMsg "The Time is not Tracked, please start tracking time first." (timeIsTracked)
-        archive self
         create this with
           endTime = newEndTime
           timeIsTracked = False
@@ -39,6 +34,7 @@ template Timetracker with
           startTime = currentTime
           timeIsTracked = True
 
+
 test_timetracker = script do
   alice <- allocateParty "Alice"
   newApp <- allocateParty "newApp"
@@ -47,17 +43,7 @@ test_timetracker = script do
   setTime (time (date 2024 Apr 5) 14 30 05)
 
   -- create Timetracker
-  timetracker <- submit alice do
-    createCmd Timetracker with
-      project = newApp
-      description = "working on this project"
-      startTime = defaultTime
-      endTime =  defaultTime
-      user = alice
-      timeIsTracked = False
-
-
-  timetracker <- submit alice do exerciseCmd timetracker StartTracking
+  timetracker <- createTTCertificate alice newApp "working on this beautiful project"
   timetracker <- submit alice do exerciseCmd timetracker StopTracking
   timetracker <- submit alice do exerciseCmd timetracker StartTracking
   --Can't start a timetracker if it's started already
@@ -70,15 +56,54 @@ test_timetracker = script do
   let laterTime = time (date 2029 Jan 1) 00 00 00
 
   timetracker2 <- submit alice do
-    createCmd Timetracker with
-      project = newApp
-      description = "working on this project"
-      startTime = laterTime
-      endTime =  defaultTime
-      user = alice
-      timeIsTracked = False
+      createCmd Timetracker with
+        project = newApp
+        description="working on this project"
+        startTime = laterTime
+        endTime =  defaultTime
+        user = alice
+        timeIsTracked = True
 
   -- Can't have a stopTime later than start time
   submitMustFail alice do exerciseCmd timetracker2 StopTracking
 
 
+
+
+
+-- Filter the Timetrackers by selected period (day,week,month,year...)
+filterTimeTrackers : [Timetracker] -> Time -> Time -> Script [Timetracker]
+filterTimeTrackers contracts periodStart periodEnd = script do
+  -- remove from the list contracts with end date not included in the period searched
+  -- A choice was made to choose only the end date rather than start date or both included in the period
+  pure (foldl (\state c -> if c.endTime >= periodStart && c.endTime <= periodEnd then c :: state else state) [] contracts)
+
+getTotalTime : [Timetracker] -> Script RelTime
+getTotalTime contracts = script do
+  -- sum each contract duration starting from 0 (seconds 0)
+  pure (foldl (+) (seconds 0) (map calculateDuration contracts))
+
+-- Function to calculate the duration for a single Timetracker contract
+calculateDuration : Timetracker -> RelTime
+-- Don't calculate duration if the time is currently tracked (because endTime would be irrelevent)
+calculateDuration tracker = if tracker.timeIsTracked
+  then seconds 0
+  else subTime tracker.endTime tracker.startTime
+
+
+-- Script to create Timetrackers certificates
+createTTCertificate : Party -> Party -> Text -> Script (ContractId Timetracker)
+createTTCertificate user project description= do
+    -- let defaultTime= seconds 0
+    -- Define the Unix epoch time (1970-01-01T00:00:00Z) as default endTimevalue
+    let defaultendTime = time (date 1970 Jan 1) 00 00 00
+    -- Get the current time
+    currentTime <- getTime
+    submit user do
+      createCmd Timetracker with
+        project
+        description
+        startTime = currentTime
+        endTime =  defaultendTime
+        user
+        timeIsTracked = True

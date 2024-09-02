@@ -1,0 +1,23 @@
+module SummaryTrigger where
+
+import qualified Daml.Trigger as T
+import Timetracker
+import TimeSummary
+import DA.List
+
+triggerTimeLog : T.Trigger ()
+triggerTimeLog = T.Trigger with
+  initialize = pure ()
+  updateState = \_ -> pure ()
+  rule = \p -> do
+    trackers <- T.query @Timetracker
+
+    let 
+      timeTrackers = map snd trackers
+      firstTimetracker = head timeTrackers
+      user = firstTimetracker.user
+      project = None
+      certListId = createTSCertificate user project timeTrackers
+    pure()
+  registeredTemplates = T.AllTemplates
+  heartbeat = None

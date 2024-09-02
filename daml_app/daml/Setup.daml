@@ -7,11 +7,6 @@ import TimeSummary
 import DA.Assert ((=/=), (===))
 import DA.List (head)
 
-
-defaultParticipant : Optional ParticipantName
-defaultParticipant = None
--- | Create a public party, then create three test users.
-
 setup : Script ([ContractId Timetracker])
 setup = do
   alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
@@ -22,93 +17,24 @@ setup = do
   support <- allocateParty "Support"
   ux <- allocateParty "UX design"
 
-  
   --TT=TimeTracker
-  newAppTTCid <- createTTCertificate alice newApp
-  supportTTCid <- createTTCertificate alice support
-  uxTTCid <- createTTCertificate alice ux
+  newAppTTCid <- createTTCertificate alice newApp "Adding new trigger feature"
+  supportTTCid <- createTTCertificate alice support "Helping client with authentication issue"
+  uxTTCid <- createTTCertificate alice ux "Making ui more accessible"
 
   -- Stop Tracking new app by exercising contract change
   newAppTTCid <- submit alice do exerciseCmd newAppTTCid StopTracking
   -- Start tracking again the new app project
-  newAppTTCid <- createTTCertificate alice newApp
-  
-  -- contracts <- getContracts alice
-  -- totalTime <- getTotalTime newAppTTCid
-
-
+  newAppTTCid <- createTTCertificate alice newApp "adding testcases"
   return ([newAppTTCid,supportTTCid,uxTTCid])
-  
-
-
-
-  
-  
--- Setup script to create Timetrackers certificates
-createTTCertificate : Party -> Party -> Script (ContractId Timetracker)
-createTTCertificate user project = do
-    -- let defaultTime= seconds 0
-    -- Define the Unix epoch time (1970-01-01T00:00:00Z) as default endTimevalue
-    let defaultendTime = time (date 1970 Jan 1) 00 00 00
-    -- Get the current time
-    currentTime <- getTime
-    submit user do
-      createCmd Timetracker with
-        project
-        description = "working on this project"
-        startTime = currentTime
-        endTime =  defaultendTime
-        user
-        timeIsTracked = True
-
--- Setup script to create TimeSummary certificates
-createTSCertificate : Party -> Optional Party -> [Timetracker] -> Script (ContractId TimeSummary, RelTime)
-createTSCertificate user project timetrackers = do
-  totalTime <- getTotalTime timetrackers
-  tSCertificateCid <- submit user do
-    createCmd TimeSummary with
-      user
-      project
-      timetrackers
-      totalTime 
-      observers = []
-  --return Cid but also totalTime for test purpose
-  return (tSCertificateCid, totalTime)
-
-
--- test_setup = script do
-  -- timeTrackersList <- setup
-  -- temp <- fetchActiveContractsByTemplate Timetracker
-  -- Some timeTracker1  <- queryContractId alice timeTrackersList._1
-  -- assert(timeTrackersList._1.description == "working on this project")
-
 
 
 -- Function to query all contracts for one project or one user
 getContracts : Party -> Script [Timetracker]
 getContracts party= do 
   contracts <- query @Timetracker party
-  -- Previous contract return both contractId and contract, we map to get only the contract part (the c._2) of each element in the contracts list
-  pure (map (\c -> c._2) contracts)
-
-getTotalTime : [Timetracker] -> Script RelTime
-getTotalTime contracts = script do
-  -- sum each contract duration starting from 0 (seconds 0)
-  pure (foldl (+) (seconds 0) (map calculateDuration contracts))
-
--- Function to calculate the duration for a single Timetracker contract
-calculateDuration : Timetracker -> RelTime
--- Don't calculate duration if the time is currently tracked (because endTime would be irrelevent)
-calculateDuration tracker = if tracker.timeIsTracked
-  then seconds 0
-  else subTime tracker.endTime tracker.startTime
-
--- Filter the Timetrackers by selected period (day,week,month,year...)
-filterTimeTrackers : [Timetracker] -> Time -> Time -> Script [Timetracker]
-filterTimeTrackers contracts periodStart periodEnd = script do
-  -- remove from the list contracts with end date not included in the period searched
-  -- A choice was made to choose only the end date rather than start date or both included in the period
-  pure (foldl (\state c -> if c.endTime >= periodStart && c.endTime <= periodEnd then c :: state else state) [] contracts)
+  -- Previous contract return both contractId and contract payload, we map to get only the second element of the tuple contract part of each element in the contracts list
+  pure (map snd contracts)
 
 
 create_summary = script do
@@ -119,9 +45,9 @@ create_summary = script do
   setTime (time (date 2024 Apr 5) 14 30 05)
 
   --TT is short for TimeTracker
-  newAppTTCid <- createTTCertificate alice newApp
-  supportTTCid <- createTTCertificate alice support
-  uxTTCid <- createTTCertificate alice ux
+  newAppTTCid <- createTTCertificate alice newApp "Adding new trigger feature"
+  supportTTCid <- createTTCertificate alice support "Helping client with authentication issue"
+  uxTTCid <- createTTCertificate alice ux "Making ui more accessible "
 
   passTime (hours 10)
   -- Stop Tracking new app by exercising contract change
@@ -184,11 +110,11 @@ create_summary = script do
   lucasContracts <- query @TimeSummary lucas
   let lucasContract = head lucasContracts
 
-  bobContract._1 === toDateCid
-  bobContract._1 =/= newAppCid
+  fst bobContract === toDateCid
+  fst bobContract =/= newAppCid
 
-  lucasContract._1 =/= toDateCid
-  lucasContract._1 === newAppCid
+  fst lucasContract =/= toDateCid
+  fst lucasContract === newAppCid
 
 
 
