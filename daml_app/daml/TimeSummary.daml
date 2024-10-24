@@ -18,11 +18,10 @@ template TimeSummary with
     -- key (user, project ): (Party, Optional Party)
     -- maintainer key._1
 
-    nonconsuming choice ShareTimeSummary: ContractId TimeSummary
+    choice ShareTimeSummary: ContractId TimeSummary
       with newObervers : [Party]
       controller user
       do
-        archive self
         create this with
           observers =  observers ++ newObervers 
 
